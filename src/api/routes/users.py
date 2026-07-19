@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select 
+from typing import List
+from sqlalchemy import select
+from src.schemas.server import ServerResponse
+from src.models.server import Server, ServerMember
 from src.api.dependencies import get_db
 from src.schemas.user import UserCreate, UserResponse
 from src.models.user import User 
@@ -46,4 +50,24 @@ async def get_me(
     curr_user: User = Depends(get_current_user)
 ):
     return curr_user
+
+@router.get("/@me/servers", response_model = List[ServerResponse])
+async def get_my_servers(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Fetch all servers the authenticated user is a member of.
+    """
+
+    stmt = (
+        select(Server)
+        .join(ServerMember, Server.id == ServerMember.server_id)
+        .where(ServerMember.user_id == current_user.id)
+    )
+    
+    result = await db.execute(stmt)
+    servers = result.scalars().all()
+
+    return servers
 
