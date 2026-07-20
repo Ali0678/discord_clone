@@ -44,3 +44,5 @@ class ServerMember(RawBase):
         default = lambda: datetime.now(timezone.utc),
         nullable = False
     )
+
+    channels = relationship("Channel", back_populates = "server", cascade = "all, delete-orphan")
