@@ -65,5 +65,8 @@ class ConnectionManager:
                 except Exception as e:
                     logger.error(f'Failed to send message to a client: {e}')
                     self.disconnect(connection, channel_id)
+    
+    def is_user_online(self, user_id: str) -> bool:
+        return self.user_sessions.get()
 
 manager = ConnectionManager()
