@@ -46,7 +46,7 @@ async websocket_endpoint(
     if not current_user:
         return
     
-    await manager.connect(websocket, channel_id)
+    await manager.connect(websocket, channel_id, str(current_user.id))
     
     await manager.broadcast_to_channel(
         channel_id,
@@ -79,7 +79,7 @@ async websocket_endpoint(
             await manager.broadcast_to_channel(channel_id, message_payload)
         
     except WebSocketDisconnect:
-        manager.disconnect(websocket, channel_id)
+        await manager.disconnect(websocket, channel_id, str(current_user.id))
         await manager.broadcast_to_channel(
             channel_id,
             {"type": "system", "content": f'{current_user.username} left the chat'}
