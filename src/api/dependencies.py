@@ -62,7 +62,7 @@ async def get_current_user(
     return user
         
 async def require_server_owner(
-    server_id: UUID = Path(...),
+    server_id: str = Path(...),
     current_user = User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> Server:
