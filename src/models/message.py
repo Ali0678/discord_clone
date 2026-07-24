@@ -1,6 +1,6 @@
 import uuid 
 from datetime import datetime, timezone
-from sqlalchemy import ForeignKey, Text, DateTime 
+from sqlalchemy import ForeignKey, Text, DateTime, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.base_class import Base 
 
@@ -10,7 +10,6 @@ class Message(Base):
     channel_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("channels.id", ondelete = "CASCADE"),
         nullable = False,
-        index = True
     )
 
     author_id: Mapped[uuid.UUID] = mapped_column(
@@ -26,3 +25,11 @@ class Message(Base):
 
     channel = relationship("Channel")
     author = relationship("User")
+
+    __table_args__ = (
+        Index(
+            "ix_messages_channel_id_created_at_desc",
+            "channel_id",
+            text("created_at DESC")
+        ),
+    )
