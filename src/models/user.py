@@ -30,4 +30,9 @@ class User(Base):
         nullable = False
     )
 
+    avatar_url: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable = True
+    )
+
     owned_servers = relationship("Server", back_populates = "owner")

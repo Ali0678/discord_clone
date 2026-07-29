@@ -23,9 +23,14 @@ class Message(Base):
         nullable = False
     )
 
+    attachment_url: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable = True
+    )
+
     channel = relationship("Channel")
     author = relationship("User")
-
+    
     __table_args__ = (
         Index(
             "ix_messages_channel_id_created_at_desc",
