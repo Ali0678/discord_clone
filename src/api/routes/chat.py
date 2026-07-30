@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, File, Form, UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import jwt, JWTError
@@ -8,6 +8,7 @@ from src.websockets.manager import manager
 from src.api.dependencies import get_db
 from src.core.config import settings
 from src.models.user import user
+from src.services.storage import process_and_save_upload
 
 router = APIRouter(tags=["Chat"])
 
@@ -106,3 +107,45 @@ async def get_channel_history(
     messages = results.scalars().all()
 
     return messages[::-1]
+
+@router.post("/channels/{channel_id}/messages")
+async def create_message_with_attachment(
+    channel_id: str,
+    content: str = Form(""),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Handles uploading an image and broadcasting it to the channel.
+    """
+    try:
+        attachment_url = await process_and_save_upload(file)
+    except HTTPException as e:
+        raise e 
+    except Exception as e:
+        raise HTTPException(status_code = 500, detail = "Upload failed")
+    
+    new_message = Message(
+        channel_id = channel_id,
+        author_id = current_user.id,
+        content = content,
+        attachment_url = attachment_url
+    )
+    db.add(new_message)
+    await db.commit()
+    await db.refresh(new_message)
+
+    message_payload = {
+        "id": str(new_message.id),
+        "type": "message",
+        "author": current_user.username,
+        "author_id": str(current_user.id),
+        "content": new_message.content,
+        "attachment_url": new_message.attachment_url,
+        "timestamp": new_message.create_at.isoformat()
+    }
+    
+    await manager.broadcast_to_channel(channel_id, message_payload)
+    return {"status": "success", "message": message_payload}
+    
