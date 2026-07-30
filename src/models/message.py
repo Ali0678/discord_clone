@@ -34,6 +34,11 @@ class Message(Base):
         nullable = True
     )
 
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone = True),
+        nullable = True
+    )
+
     channel = relationship("Channel")
     author = relationship("User")
     

@@ -98,7 +98,9 @@ async def get_channel_history(
     """
     stmt = (
         select(Message)
-        .where(Message.channel_id == channel_id)
+        .where(Message.channel_id == channel_id,
+               Message.deleted_at.is_(None)
+        )
         .order_by(Message_created_at.desc())
         .limit(limit)
     )
@@ -198,7 +200,11 @@ async def delete_message(
     if str(message.author_id) != str(current_user.id):
         raise HTTPException(status_code=403, detail="You can only delete your own messages")
     
-    await db.delete(message)
+    if message.deleted_at is not None:
+        raise HTTPException(status_code = 400, detail = "Message is already deleted")
+    
+
+    message.deleted_at = datetime.now(timezone.utc)
     await db.commit()
 
     delete_payload = {
