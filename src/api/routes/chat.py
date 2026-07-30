@@ -148,4 +148,62 @@ async def create_message_with_attachment(
     
     await manager.broadcast_to_channel(channel_id, message_payload)
     return {"status": "success", "message": message_payload}
+
+@router.patch("/channels/{channel_id}/messages/{message_id}")
+async def edit_message(
+    channel_id: str,
+    message_id: str,
+    new_content = str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    stmt = select(Message).where(Message.id == message_id, Message.channel_id = channel_id)
+    result = await db.execute(stmt)
+    message = result.scalars().first()
+
+    if not message:
+        raise HTTPException(status_code = 404, detail = "Message not found")
+
+    if str(message.author_id) != str(current_user.id):
+        raise HTTPException(status_code = 403, detail = "You can only edit your own message")
     
+    message.content = new_content
+    await db.commit()
+    await db.refresh(message)
+
+    update_payload = {
+        "type": "message_update",
+        "id": str(message.id),
+        "content": message.content,
+        "updated_at": message.updated_at.isoformat()
+    }
+    await manager.broadcast_to_channel(channel_id, update_payload)
+
+    return {"status": "success", "message": update_payload}
+
+@router.delete("/channels/{channel_id}/messages/{message_id}")
+async def delete_message(
+    channel_id: str,
+    message_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user = User = Depends(get_current_user)
+):
+    stmt = select(Message).where(Message.id == message_id, Message.channel_id == channel_id)
+    result = await db.execute(stmt)
+    message = result.scalars().first()
+
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    if str(message.author_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="You can only delete your own messages")
+    
+    await db.delete(message)
+    await db.commit()
+
+    delete_payload = {
+        "type": "message_delete",
+        "id": message_id
+    }
+    await manager.broadcast_to_channel(channel_id, delete_payload)
+    return {"status": "success", "deleted_id": message_id}
