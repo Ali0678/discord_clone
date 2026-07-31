@@ -90,6 +90,7 @@ async websocket_endpoint(
 async def get_channel_history(
     channel_id: str,
     limit: int = Query(50, le = 100),
+    cursor: datetime = Query(None, description = "Timestamp of the oldest message currently loaded")
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -101,10 +102,13 @@ async def get_channel_history(
         .where(Message.channel_id == channel_id,
                Message.deleted_at.is_(None)
         )
-        .order_by(Message_created_at.desc())
-        .limit(limit)
     )
 
+    if cursor:
+        stmt = stmt.where(Message.created_at < cursor)
+
+    stmt = stmt.order_by(Message.created_at.desc()).limit(limit)
+    
     result = await db.execute(stmt)
     messages = results.scalars().all()
 
